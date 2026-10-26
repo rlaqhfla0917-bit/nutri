@@ -14,5 +14,7 @@ jobs:
           node-version: "22"
       - name: Install dependencies
         run: npm install --no-audit --no-fund
+      - name: Test game rules and food data
+        run: npm test
       - name: Build Vite app
         run: npm run build
