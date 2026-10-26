@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import foodsRaw from "../data/foods.json";
 import "./style.css";
+import {foodRole as role, meetsChallenge} from "./game/nutritionRules";
 
 type Food = { food_code: string; food_name: string; image: string; category: string; energy_kcal: number; carbohydrate_g: number; protein_g: number; fat_g: number; sugar_g: number; sodium_mg: number; };
 type Nutrient = "energy_kcal" | "carbohydrate_g" | "protein_g" | "fat_g" | "sugar_g" | "sodium_mg";
@@ -14,13 +15,6 @@ const challenges: {stage: Stage; label: string; key: Nutrient; op: "max" | "min"
  {stage:2,label:"나트륨 1500mg 이하의 한 끼를 만드세요",key:"sodium_mg",op:"lte",target:1500},
  {stage:3,label:"총열량 800kcal 이하, 단백질 18g 이상을 만족하세요",key:"energy_kcal",op:"lte",target:800},
 ];
-const role = (food: Food) => {
- const c = food.category;
- if (c.includes("밥") || c.includes("면") || c.includes("죽")) return "밥";
- if (c.includes("국") || c.includes("탕") || c.includes("찌개")) return "국";
- return "반찬";
-};
-const sum = (items: Food[], key: Nutrient) => items.reduce((n, f) => n + Number(f[key] || 0), 0);
 function chooseCards(stage: Stage, round: number): Food[] {
  if (stage === 1) return foods.slice(((round - 1) * 3) % Math.max(1, foods.length - 2), ((round - 1) * 3) % Math.max(1, foods.length - 2) + 3);
  return foods;
@@ -50,15 +44,7 @@ export function App() {
  }
  function submit() {
   if (result || (challenge.stage === 1 ? chosen.length !== 1 : chosen.length !== 3)) return;
-  let valid = false;
-  if (challenge.stage === 1) {
-   const values = candidates.map(f => f[challenge.key]);
-   valid = chosen[0][challenge.key] === (challenge.op === "max" ? Math.max(...values) : Math.min(...values));
-  } else {
-   const value = sum(chosen, challenge.key);
-   valid = challenge.op === "gte" ? value >= (challenge.target ?? 0) : value <= (challenge.target ?? 0);
-   if (challenge.stage === 3) valid = valid && sum(chosen, "protein_g") >= 18;
-  }
+  const valid = meetsChallenge(challenge, candidates, chosen);
   setScores(prev => prev.map((s, i) => i === turn ? s + (valid ? (challenge.stage === 3 ? 3 : challenge.stage === 2 ? 2 : 1) : 0) : s));
   setResult(valid ? "성공! 점수를 획득했어요." : "아쉬워요. 영양성분을 확인하고 다음 문제에 도전하세요.");
   setShowValues(true);
