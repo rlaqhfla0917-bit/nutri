@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import {foodRole, totalNutrient, meetsChallenge} from '../src/game/nutritionRules.ts';
+import {challenges} from '../src/game/challenges.ts';
 const make = (code, category, protein, sodium, kcal = 150) => ({
   food_code: code, category, protein_g: protein, sodium_mg: sodium, energy_kcal: kcal,
   carbohydrate_g: 20, fat_g: 5, sugar_g: 2,
@@ -39,5 +40,18 @@ test('published food data and image paths are valid', () => {
     assert.ok(fs.existsSync(path.join(process.cwd(),'public',food.image.slice(1))),food.image);
     for(const key of ['energy_kcal','protein_g','sodium_mg'])
       assert.ok(Number.isFinite(food[key])&&food[key]>=0,food.food_code+'/'+key);
+  }
+});
+test('all published meal missions have a solvable food combination', () => {
+  const foods = JSON.parse(fs.readFileSync(new URL('../data/foods.json',import.meta.url),'utf8'));
+  assert.equal(challenges.length, 8);
+  assert.deepEqual(challenges.map(x=>x.stage), [1,1,1,2,2,2,3,3]);
+  const groups = ['밥','국','반찬'].map(r=>foods.filter(f=>foodRole(f)===r));
+  for(const challenge of challenges){
+    if(challenge.stage===1) continue;
+    const solvable = groups[0].some(rice=>groups[1].some(soup=>groups[2].some(side=>
+      meetsChallenge(challenge,foods,[rice,soup,side])
+    )));
+    assert.ok(solvable,challenge.label);
   }
 });
